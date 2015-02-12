@@ -248,6 +248,8 @@ char *** processHeader_parse_options( char * req , char ** out , int * success )
         size3 ++ ;
         cur = str;
         *out = end-1;
+      } else { //there is no :
+        break;
       }
     }
   }
@@ -375,6 +377,11 @@ String getHeader( int sock ){
 
     if( ret.len >= 4 && !strncmp( ret.dat+ret.len-strlen(goal), goal, 4 )){
       break;
+    }
+    if( r == 0 ){
+      LOG("malformed header, no \r\n\r\n");
+      clean_String( &ret );
+      return ret;
     }
   }
   
@@ -866,6 +873,22 @@ MeathodReturn getOutput( const Request_header h , const int sock ){
   return data;
 }
 
+//tell the client why the request failed
+void headerFail( int sock ){
+  char head[] = "300 Bad Request\r\n"
+                "ContentLength: ";
+  char number[32];
+  char tail[] = "the sent header was invalid<br>\r\n"
+                "it was missing the trailing \\r\\n\\r\\n\r\n" ;
+  int len = strlen( tail );
+  sprintf(number, "%i\r\n", len);
+
+
+  writeString_nullTerminated( sock , head );
+  writeString_nullTerminated( sock , number );
+  writeString_nullTerminated( sock , tail );
+}
+
 void * serve_client( void * argp ){
   assert( argp != NULL );
   threadArg *arg = argp;
@@ -873,6 +896,7 @@ void * serve_client( void * argp ){
 
   String header_string = getHeader( sock );
   if( header_string.dat == NULL ){
+    headerFail( sock );
     goto smallClean;
   }
 

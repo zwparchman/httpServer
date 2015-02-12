@@ -504,7 +504,6 @@ int test_String(){
   alog( test_make_String(), 1 );
   alog( test_make_binary_String(), 1 );
 
-
   /* TODO test these
   void concat_inplace_String( String * d, const String s );
   String concat_String( const String a , const String b );
@@ -512,9 +511,6 @@ int test_String(){
   int cmp_String( const String s , const String b );
   String copy_String( const String a );
   */
-
-
-
   return good;
 }
 
