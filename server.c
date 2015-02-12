@@ -222,7 +222,10 @@ char *** processHeader_parse_options( char * req , char ** out , int * success )
 
     if( size3 == capacity3 ){
       capacity3 *= 1.3;
+      assert( capacity3 != 0 );
+      void * temp = ret;
       ret = realloc( ret , capacity3 );
+      if( ret == NULL ) { ret=temp ; goto error; }
     }
 
     {
@@ -249,9 +252,18 @@ char *** processHeader_parse_options( char * req , char ** out , int * success )
     }
   }
   char ** slot = malloc ( 2 * sizeof( char * ) );
+  if( slot == NULL ){
+    LOG("slot == null");
+    goto error;
+  }
   slot[0] = NULL;
   slot[1] = NULL;
-  ret = realloc( ret , (size3 + 2)*sizeof( char ** ) );
+  {
+    void * temp=ret;
+    ret = realloc( ret , (size3 + 2)*sizeof( char ** ) );
+    if( ret == NULL ){ ret=temp; goto error; }
+  }
+
   ret[ size3 ] = slot;
   
 
@@ -308,15 +320,15 @@ error:
   return NULL;
 }
 
-Request_header processHeader( char * req , int * success ){
+Request_header processHeader( const String req , int * success ){
   Request_header ret={0};
-  ret.raw = req;
+  ret.raw = strMemCopy( req.dat );
   *success = 1;
-  assert( req != NULL );
+  assert( req.dat != NULL );
   char * _out;
   char ** out = & _out ;
-  (*out) = req ;
-  char * cur = req;
+  (*out) = req.dat ;
+  char * cur = req.dat;
 
 
   ret.meathod = processRequestType( cur , out , success );
@@ -350,38 +362,28 @@ error: *success=0;
 }
 
 
-char * getHeader( int sock ){
-  char * goal = "\r\n\r\n";
+String getHeader( int sock ){
+  String ret={0};
+  char const * const goal = "\r\n\r\n";
 
-  int capacity = 1024;
-  int size = 0;
-  char * ret = malloc( capacity );
-  if ( ret == NULL ){
-    perror("realloc returned NULL");
-    exit(2);
-  }
+  const int capacity = 1024;
+  char buffer[capacity];
 
-  read( sock , ret , 4 );
-  size+=4;
-  ret[4] = 0 ;
-  while( strcmp( goal , ret + size-strlen(goal) - 0 ) != 0  ){
-    if( capacity < size + 1 ){
-      ret = realloc( ret , capacity * 1.3 );
-      if( ret == NULL ){
-        perror("realloc returned NULL");
-        exit(2);
-      }
-      capacity *= 1.3;
-    } else {
-      read( sock , ret + size , 1 );
-      ret[size+1]=0;
-      size++;
+  while( 1 ){
+    int r = read( sock, buffer, capacity );
+    binary_append_String( &ret, buffer, r );
+
+    if( ret.len >= 4 && !strncmp( ret.dat+ret.len-strlen(goal), goal, 4 )){
+      break;
     }
   }
+  
+  binary_append_String( &ret, "\0", 1 );
+
   return ret;
 }
 
-char * output = "HTTP/1.0 200 OK\r\nDate: Fri, 03 Oct 2014 15:23:19 GMT\r\nServer: Mine\r\nContent-Length: "; //missing the double new line
+char * output = "HTTP/1.0 200 OK\r\nDate: Fri, 03 Oct 2014 15:23:19 GMT\r\nServer: Mine\r\nContent-Length: "; //missing the double new line 
 
 
 size_t strlenlist( char ** l ){
@@ -406,10 +408,8 @@ char * concat_string_list( char ** lst ){
   return ret;
 }
 char * getServerName( ){
-  char * name = "Zack_server";
-  char * ret = calloc( strlen( name ) + 1 , 1 );
-  strcpy( ret , name );
-  return ret;
+  char const * const name = "Zack_server";
+  return strMemCopy( name );
 }
 
 char * getTime(){
@@ -507,7 +507,10 @@ MeathodReturn getGet( Request_header h ){
     fsize = ftell(file);
     fseek(file, 0, SEEK_SET);
     string = malloc(fsize + 1);
-    if( string == NULL ) return internalError(h , Malloc_Error );
+    if( string == NULL ) {
+      fclose(file);
+      return internalError(h , Malloc_Error );
+    }
     fread(string, fsize, 1, file);
     fclose(file);
     string[fsize] = 0;
@@ -546,7 +549,6 @@ MeathodReturn getGet( Request_header h ){
 
   }
 
-
   //get size of charpp
   if( _ret.simple[1] == NULL ){
     char *  sizeStr = malloc( 32 );
@@ -558,7 +560,6 @@ MeathodReturn getGet( Request_header h ){
     }
     _ret.simple[1] =  sizeStr;
   }
-
   return _ret;
 }
 MeathodReturn getHead( Request_header h ){
@@ -575,6 +576,7 @@ MeathodReturn getHead( Request_header h ){
   free( _ret.simple[2] );
   _ret.simple[2] = NULL;
 
+  free( sizeStr );
   return _ret;
 }
 
@@ -607,7 +609,7 @@ int atoid( const char * in , int def ){
 
 }
 
-//un url encode
+//un-url encode
 char * unencode( char * s ){
   char * ret = strMemCopy( s );
 
@@ -712,6 +714,7 @@ MeathodReturn makeFile ( Request_header h, const int sock ){
 
   if ( 0 > read( sock , buff , cl ) ){
     LOG("Error reading");
+    free(buff);
     return internalError( h, status_Internal );
   }
   buff[cl]=0;
@@ -868,9 +871,9 @@ void * serve_client( void * argp ){
   threadArg *arg = argp;
   int sock = arg -> socket;
 
-  char * header_string = getHeader( sock );
-  if( header_string == NULL ){
-    return NULL;
+  String header_string = getHeader( sock );
+  if( header_string.dat == NULL ){
+    goto smallClean;
   }
 
   int b;
@@ -884,8 +887,10 @@ void * serve_client( void * argp ){
   write( sock , mret.raw  , mret.rawLen );
   free_MeathodReturn( mret );
 
+  clean_String ( &header_string );
   freeRequest_header( rh );
   
+smallClean:
   close ( sock );
   free( arg -> threadStruct );
   free( argp );

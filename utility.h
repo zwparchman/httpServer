@@ -26,7 +26,7 @@ void writeCount( int fileDescriptor , char * dat , int count );
 
 //copy a string and return a new memory location
 char * nstrMemCopy( char * cpy , int n);
-char * strMemCopy( char * cpy );
+char * strMemCopy( char const * const cpy );
 
 
 void stripDotDotSlash( char * );

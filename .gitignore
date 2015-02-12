@@ -1,0 +1,4 @@
+*.o
+tags
+.ycm_extra_conf.pyc
+server

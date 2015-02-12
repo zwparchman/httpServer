@@ -9,8 +9,10 @@ LFLAGS= -g $(STD) $(OFLAGS) -lpthread
 
 Objects= server.o utility.o test.o statusCodes.o types.o
 
-all : $(Objects) server 
+all : $(Objects) server tags
 
+tags : *c *h
+	ctags *[ch]
 server : $(Objects)
 	$(CC) $(Std) $(Objects) $(LFLAGS)  -o server 
 

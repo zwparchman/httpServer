@@ -3,8 +3,8 @@
 #include "statusCodes.h"
 #include <string.h>
 #include <strings.h>
-
 #include "types.h"
+
 #include "utility.h"
 
 #define alog(A,B) do{ \
@@ -447,6 +447,77 @@ int test_stripDotDotSlash(){
   return good;
 }
 
+int test_make_String(){
+  int good=1;
+
+  String s={0};
+  make_String( &s , "bob" );
+
+  alog( s.len , 3 );
+  alog( strcmp(s.dat,"bob") , 0 );
+  clean_String(&s);
+
+  return good;
+}
+
+int test_make_binary_String(){
+  int good=1;
+
+  String s={0};
+
+  char b[] = {1,2,3,4};
+
+  make_binary_String(&s, b, 4 );
+
+  alog( s.len , 4 );
+  alog( s.dat[0] , 1 );
+  alog( s.dat[1] , 2 );
+  alog( s.dat[2] , 3 );
+  alog( s.dat[3] , 4 );
+
+  clean_String(&s);
+
+  return good;
+}
+
+int test_binary_append_String(){
+  int good=1;
+
+  String s={0};
+  make_String(&s , "t" );
+  binary_append_String( &s, "\n", 2 );
+
+  alog( s.len , 4 );
+  alog( s.dat[0] , 't');
+  alog( s.dat[1] , 0);
+  alog( s.dat[2] , '\n');
+  alog( s.dat[3] , 0);
+
+  clean_String( &s );
+
+  return good;
+}
+
+int test_String(){
+  int good=1;
+
+  alog( test_make_String(), 1 );
+  alog( test_make_binary_String(), 1 );
+
+
+  /* TODO test these
+  void concat_inplace_String( String * d, const String s );
+  String concat_String( const String a , const String b );
+  void clean_String( String *s );
+  int cmp_String( const String s , const String b );
+  String copy_String( const String a );
+  */
+
+
+
+  return good;
+}
+
 
 
 void test(){
@@ -460,6 +531,7 @@ void test(){
       && test_add_front_List()
       && test_shallow_copy_List()
       && test_stripDotDotSlash()
+      && test_String()
       ){
     //exit(0);
     return;

@@ -48,7 +48,7 @@ char * nstrMemCopy( char * cpy , int n){
 
 }
 
-char * strMemCopy( char * cpy ){
+char * strMemCopy( char const * const cpy ){
   if( cpy == NULL ) LOG("Error");
   char * ret = malloc( 1+strlen( cpy ) );
   strcpy( ret , cpy );
