@@ -704,6 +704,21 @@ List * parse_post_args ( char * b ){
   return ret;
 }
 
+int write_binary_String_to_file_by_name( char * fname , String s ){
+  //write the file
+  FILE* f = fopen( fname , "wb" );
+  if( !f ){ LOG("Failed to open file");goto error; }
+  int w = fwrite( s.dat , s.len, 1, f);
+  if( w != s.len ){ LOG("not enough writen to file"); goto error; }
+  if( EOF == fflush( f ) ){ LOG("Failed to flush file");goto error; }
+  if( EOF == fclose( f ) ){ LOG("Failed to close file");goto error; }
+
+  return 0;
+
+error:
+  return 1;
+}
+
 MeathodReturn makeFile ( Request_header h, const int sock ){
   //get arguments
   char * cl_string = get_header_field_value( h , "Content-Length" );
