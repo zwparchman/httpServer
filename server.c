@@ -372,11 +372,14 @@ String getHeader( int sock ){
   char buffer[capacity];
 
   while( 1 ){
-    int r = read( sock, buffer, capacity );
+    int r = read( sock, buffer, 1 );
     binary_append_String( &ret, buffer, r );
 
-    if( ret.len >= 4 && !strncmp( ret.dat+ret.len-strlen(goal), goal, 4 )){
-      break;
+    {
+      char *tbeg = ret.dat + ret.len - strlen( goal ) ;
+        if(  !strncmp( tbeg , goal, 4 )){
+          break;
+        }
     }
     if( r == 0 ){
       LOG("malformed header, no \r\n\r\n");

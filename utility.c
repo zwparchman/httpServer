@@ -111,9 +111,13 @@ void writeString_nullTerminated( int fileDescriptor , char * str ){
 
   int n ;
   do{
-    n = write( fileDescriptor , str , toWrite);
+    n = send( fileDescriptor , str , toWrite, MSG_NOSIGNAL);
     toWrite -= n;
     str += n;
+    if( n<0 ){
+      LOG("Broken pipe detected. Aborting write");
+      return;
+    }
   } while ( toWrite > 0 );
 }
 
