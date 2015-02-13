@@ -97,7 +97,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         extra = ""
         fails = 0
 
-        while( os.path.isfile( oname+extra )):
+        while( os.path.isdir( oname+extra ) or os.path.isfile( oname+extra )):
             fails += 1
             extra = str( fails )
 
