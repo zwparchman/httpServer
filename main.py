@@ -24,6 +24,27 @@ upload_file_html = """
   <input type="submit" value="submit"><br>
 </form></body></html>
 """
+
+def cacheDumpIndex( di ):
+    '''cache dumpIndex using 2 state LRU algo'''
+
+    #dict of type {string:(return_value,LRU_value),...}
+    args = {}
+
+    def new( self, s ):
+        if s in args:
+            val = args[s]
+            args[s] = ( val[0] , 1 )
+            return val[0]
+        else:
+            ret = di( self, s )
+            args[s]= ( ret, 1 )
+            return ret
+
+    return new
+
+
+
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
     def evil( self ):
         if '..' in self.path : return True
@@ -46,22 +67,21 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
 
         self.path = "./"+self.path
 
-        print self.path
         indexes = ["./index.html","/index.html","index.html"]
         upload = ["./upload.html","/upload.html","upload.html"]
         if self.path in indexes :
-            self.dumpIndex(".")
+            self.write( self.dumpIndex(".") )
         elif self.path in upload :
-            self.wfile.write( self.genPacket("200 OK", upload_file_html))
+            self.write( self.genPacket("200 OK", upload_file_html))
 
         elif os.path.isdir(self.path):
-            self.dumpIndex(self.path)
+            self.write( self.dumpIndex(self.path) )
         elif os.path.isfile(self.path):
             with file ( self.path , "rb" ) as f:
                 payload = f.read()
                 self.wfile.write( self.genPacket("200 OK", payload ) )
         else:
-            self.dumpIndex(".")
+            self.write( self.dumpIndex(".") )
 
     def do_POST( self ):
         """Begin serving a POST request. The request data is readable
@@ -83,13 +103,17 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         oname=None
         cont = None
         if 'name' not in body or not len(body['name'])>0:
-            self.wfile.write( self.genPacket("300 Name Required", "Name Required in form"))
+            self.wfile.write( self.genPacket(
+                "300 Name Required",
+                "Name Required in form"))
             return
         else:
             oname = body['name'][0]
 
         if 'contents' not in body :
-            self.wfile.write( self.genPacket("300 File Required", "File Required in form"))
+            self.wfile.write( self.genPacket(
+                "300 File Required",
+                "File Required in form"))
             return
         else:
             cont = body['contents'][0]
@@ -127,7 +151,10 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         headerstr = self.genPacket( "404 Not Found" , payload )
         self.wfile.write( headerstr + payload )
 
+    def write(self, s ):
+        self.wfile.write( s )
 
+    #@cacheDumpIndex
     def dumpIndex( self, path ):
         dname = []
         fname = []
@@ -152,7 +179,12 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
 
         payload = "<html><body><h2>Listing</h2><br>"+payload+"</body></html>"
 
-        self.wfile.write( self.genPacket( "200 OK", payload ) )
+        return self.genPacket( "200 OK", payload )
+
+
+
+
+
 
 
 
@@ -174,12 +206,15 @@ def wrapInLink( path , writeAs=None ):
     return "<a href="+opath+"> "+writeAs+"</a>"
 
 class sserver( SocketServer.ThreadingMixIn, SocketServer.TCPServer ):
+#class sserver( SocketServer.TCPServer ):
     allow_reuse_address=True
+    timeout = 1
+    request_queue_size=16
 
 Handler = myServer
 
-#httpd =  SocketServer.TCPServer (("", PORT), Handler)
 httpd =  sserver (("", PORT), Handler)
+
 
 print "serving at port", PORT
 
