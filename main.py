@@ -46,15 +46,16 @@ def cacheDumpIndex( di ):
 
 
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
-    def evil( self ):
-        if '..' in self.path : return True
-        if '//' in self.path : return True
-        if '~' in self.path : return True
+    def evil( self , s ):
+        if '..' in s : return True
+        if '//' in s : return True
+        if '~' in s : return True
+        if '\\'in s : return True
         return False
 
 
     def do_GET( self ):
-        if self.evil():
+        if self.evil( self.path ):
             self._404()
             return
         self.path = urllib.unquote(self.path).decode('utf8')
@@ -127,10 +128,12 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
 
         oname = oname+extra
 
+        if self.evil( oname ):
+            self.write( self.genPacket("300 I didn't like that file name","I didn't like that file name" ) )
         with file( oname, 'wb' ) as f:
             f.write( cont )
 
-        self.wfile.write( self.genPacket( "200 OK", "<html><body>Write Successfull\r\n<br>Filename is: "+oname+"</body></html>" ))
+        self.write( self.genPacket( "200 OK", "<html><body>Write Successfull\r\n<br>Filename is: "+oname+"</body></html>" ))
         return
 
     def do_HEAD( self ):
@@ -180,12 +183,6 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         payload = "<html><body><h2>Listing</h2><br>"+payload+"</body></html>"
 
         return self.genPacket( "200 OK", payload )
-
-
-
-
-
-
 
 
 def wrapInLink( path , writeAs=None ):
