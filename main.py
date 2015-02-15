@@ -12,6 +12,7 @@ import os
 import StringIO
 import urllib
 import cgi
+import sh
 
 PORT = 12000
 
@@ -46,6 +47,24 @@ def cacheDumpIndex( di ):
 
 
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
+    def log( self , s=None ):
+        all = ""
+        date = "DateOfRequest:"+str( sh.date() )
+        path = " requestedPath:"+self.path
+        headers = " Headers:"+str( self.headers.dict )
+        all = date + path + headers
+
+        if s is not None:
+            all = all+s
+
+        all = all.replace('\n','')
+        all = all.replace('\r','')
+
+        with file( "/home/zack/serverLog" ,"a" ) as f:
+            f.write( all+"\n" )
+            f.flush()
+
+
     def evil( self , s ):
         if '..' in s : return True
         if '//' in s : return True
@@ -55,6 +74,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
 
 
     def do_GET( self ):
+        self.log()
         if self.evil( self.path ):
             self._404()
             return
@@ -87,6 +107,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
     def do_POST( self ):
         """Begin serving a POST request. The request data is readable
         on a file-like object called self.rfile"""
+        self.log()
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
         length = int(self.headers.getheader('content-length'))
         if ctype == 'multipart/form-data':
@@ -100,6 +121,8 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         [ready_to_read,x,y] = select.select([self.connection],[],[],0)
         if ready_to_read:
             self.rfile.read(2)
+
+        log( "PostBody: "+str(self.body) )
 
         oname=None
         cont = None
@@ -137,6 +160,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         return
 
     def do_HEAD( self ):
+        self.log()
         if self.evil():
             self.wfile( self.genPacket("404 Not Found","") )
         else:
