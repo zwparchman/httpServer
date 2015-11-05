@@ -70,7 +70,10 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
             with file( os.path.join(home,"serverlog") ,"a" ) as f:
                 doWrite(f)
         except IOError:
-            doWrite(sys.stdout)
+            try:
+                doWrite(sys.stdout)
+            except IOError:
+                pass
 
     def evil( self , s ):
         if '..' in s : return True
