@@ -247,7 +247,10 @@ Handler = myServer
 httpd =  sserver (("", PORT), Handler)
 
 
-print "serving at port", PORT
+try:
+    print "serving at port", PORT
+except IOError:
+    pass
 
 try:
     httpd.serve_forever()
