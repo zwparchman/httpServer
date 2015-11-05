@@ -45,6 +45,9 @@ def cacheDumpIndex( di ):
     return new
 
 
+home = os.getenv("HOME")
+if home is None : home = "/tmp"
+
 
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
     def log( self , s=None ):
@@ -60,10 +63,14 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         all = all.replace('\n','')
         all = all.replace('\r','')
 
-        with file( "/home/zack/serverLog" ,"a" ) as f:
+        def doWrite(f):
             f.write( all+"\n" )
             f.flush()
-
+        try:
+            with file( os.path.join(home,"serverlog") ,"a" ) as f:
+                doWrite(f)
+        except IOError:
+            doWrite(sys.stdout)
 
     def evil( self , s ):
         if '..' in s : return True
