@@ -12,7 +12,7 @@ import os
 import StringIO
 import urllib
 import cgi
-import sh
+import datetime
 
 PORT = 12000
 
@@ -52,10 +52,11 @@ if home is None : home = "/tmp"
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
     def log( self , s=None ):
         all = ""
-        date = "DateOfRequest:"+str( sh.date() )
+        today = datetime.date.today
+        today = "DateOfRequest:"+str( today )
         path = " requestedPath:"+self.path
         headers = " Headers:"+str( self.headers.dict )
-        all = date + path + headers
+        all = today + path + headers
 
         if s is not None:
             all = all+s
