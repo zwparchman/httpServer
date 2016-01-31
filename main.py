@@ -183,8 +183,13 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
 
         if self.evil( oname ):
             self.write( self.genPacket("300 I didn't like that file name","I didn't like that file name" ) )
-        with file( oname, 'wb' ) as f:
-            f.write( filedata.read() )
+
+        try:
+            with file( oname, 'wb' ) as f:
+                f.write( filedata.read() )
+        except IOError:
+            self.write( self.genPacket("500 server IO error.", "There was an error writing the file"))
+            return
 
         self.write( self.genPacket( "200 OK", "<html><body>Write Successfull\r\n<br>Filename is: "+oname+"</body></html>" ))
         return
