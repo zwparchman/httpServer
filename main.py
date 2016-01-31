@@ -20,7 +20,7 @@ upload_file_html = """
 <html><body><form enctype="multipart/form-data"
               method="post"
               action="upload.html">
-  <input type="textbox" name="name"><br>
+  <input type="text" name="name"><br>
   <input type="file" name="contents"><br>
   <input type="submit" value="submit"><br>
 </form></body></html>
@@ -121,6 +121,8 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         self.log()
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
         length = int(self.headers.getheader('content-length'))
+        body=None
+
         if ctype == 'multipart/form-data':
             body = cgi.parse_multipart(self.rfile, pdict)
         elif ctype == 'application/x-www-form-urlencoded':
@@ -133,25 +135,25 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         if ready_to_read:
             self.rfile.read(2)
 
-        log( "PostBody: "+str(self.body) )
+        self.log( "PostBody: "+str(body) )
 
         oname=None
-        cont = None
-        if 'name' not in body or not len(body['name'])>0:
+        contents = None
+
+        try:
+            contents = body['contents'][0]
+        except Exception: #expected to be either IndexError or KeyError
+            self.wfile.write( self.genPacket(
+                "300 File Required",
+                "File Required in form"))
+
+        oname = body.get('name', [""])[0]
+
+        if oname == "":
             self.wfile.write( self.genPacket(
                 "300 Name Required",
                 "Name Required in form"))
             return
-        else:
-            oname = body['name'][0]
-
-        if 'contents' not in body :
-            self.wfile.write( self.genPacket(
-                "300 File Required",
-                "File Required in form"))
-            return
-        else:
-            cont = body['contents'][0]
 
         extra = ""
         fails = 0
@@ -165,7 +167,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         if self.evil( oname ):
             self.write( self.genPacket("300 I didn't like that file name","I didn't like that file name" ) )
         with file( oname, 'wb' ) as f:
-            f.write( cont )
+            f.write( contents )
 
         self.write( self.genPacket( "200 OK", "<html><body>Write Successfull\r\n<br>Filename is: "+oname+"</body></html>" ))
         return
