@@ -52,7 +52,7 @@ if home is None : home = "/tmp"
 class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
     def log( self , s=None ):
         all = ""
-        today = datetime.date.today
+        today = datetime.date.today().isoformat()
         today = "DateOfRequest:"+str( today )
         path = " requestedPath:"+self.path
         headers = " Headers:"+str( self.headers.dict )
