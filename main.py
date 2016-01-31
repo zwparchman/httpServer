@@ -20,8 +20,17 @@ upload_file_html = """
 <html><body><form enctype="multipart/form-data"
               method="post"
               action="upload.html">
-  <input type="text" name="name"><br>
-  <input type="file" name="contents"><br>
+              <!-- I know "tables for layout", but it's easy -->
+              <table>
+                  <tr>
+                      <td>Save as (not required)</td>
+                      <td><input type="text" name="name"></td>
+                  </tr>
+                  <tr>
+                      <td>File to upload</td>
+                      <td><input type="file" name="contents"></td>
+                  </tr>
+              </table>
   <input type="submit" value="submit"><br>
 </form></body></html>
 """
@@ -121,33 +130,41 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         self.log()
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
         length = int(self.headers.getheader('content-length'))
-        body=None
+        fs=None
+
 
         if ctype == 'multipart/form-data':
-            body = cgi.parse_multipart(self.rfile, pdict)
-        elif ctype == 'application/x-www-form-urlencoded':
-            qs = self.rfile.read(length)
-            body = cgi.parse_qs(qs, keep_blank_values=1)
+            fs = cgi.FieldStorage( fp = self.rfile,
+                headers = self.headers,
+                environ={ 'REQUEST_METHOD':'POST' } #let cgi know this is a POST meathod
+                )
         else:
-            self.body = {}                   # Unknown content-type
+            fs = cgi.FieldStorage()
+
         # some browsers send 2 more bytes...
         [ready_to_read,x,y] = select.select([self.connection],[],[],0)
         if ready_to_read:
             self.rfile.read(2)
 
-        self.log( "PostBody: "+str(body) )
+        self.log( "PostBody: "+str(fs) )
 
         oname=None
-        contents = None
+        fileitem = None
 
-        try:
-            contents = body['contents'][0]
-        except Exception: #expected to be either IndexError or KeyError
+        file_field = fs['contents']
+        filedata = file_field.file
+
+        if( filedata is None ) :
             self.wfile.write( self.genPacket(
                 "300 File Required",
                 "File Required in form"))
+            return
 
-        oname = body.get('name', [""])[0]
+        oname = file_field.filename
+
+        override_name = fs.getfirst('name')
+        if override_name is not None and override_name != "":
+            oname = override_name
 
         if oname == "":
             self.wfile.write( self.genPacket(
@@ -167,7 +184,7 @@ class myServer( BaseHTTPServer.BaseHTTPRequestHandler ):
         if self.evil( oname ):
             self.write( self.genPacket("300 I didn't like that file name","I didn't like that file name" ) )
         with file( oname, 'wb' ) as f:
-            f.write( contents )
+            f.write( filedata.read() )
 
         self.write( self.genPacket( "200 OK", "<html><body>Write Successfull\r\n<br>Filename is: "+oname+"</body></html>" ))
         return
